@@ -28,11 +28,11 @@ read_isomut(
 \item{removePatterns}{character vector providing patterns in
 sample_names that are to be removed.}
 
-\item{extraColumns}{named list to generate extra columns. The list names are the
-names of the new columns. The list elements can either be a vector of length
-one (each row gets the same value for this column), a named vector with names
-being a subset of the \code{sample_name} column in the original isomut file, or a
-function that accepts those names as arguments.}
+\item{extraColumns}{named list to generate extra columns. The list names are
+the names of the new columns. The list elements can either be a vector of
+length one (each row gets the same value for this column), a named vector
+with names being a subset of the \code{sample_name} column in the original isomut
+file, or a function that accepts those names as arguments.}
 }
 \value{
 a data.frame containing the filtered and preprocessed data.
