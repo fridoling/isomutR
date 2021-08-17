@@ -152,12 +152,15 @@ annotate_isomut <- function(isomut, gtf_path, noDups = FALSE) {
 #' an object of class `FaFile`.
 #' @param gtf_path path to annotation file in `gtf` or `gff` format.
 #' @param format_indels whether indels should be formatted (see `format_indels`
-#' for details)
+#' for details).
+#' @param correct_coding whether coding be corrected if two variants hit the same
+#' codon.
 #'
 #' @return a data.frame with additional columns regarding coding consequences.
 #'
 #' @export
-predict_coding <- function(isomut, ref, gtf_path, format_indels = TRUE) {
+predict_coding <- function(isomut, ref, gtf_path, format_indels = TRUE,
+                           correct_coding = FALSE) {
   stopifnot(is(ref, "FaFile") || is.character(ref))
   if(is.character(ref)) ref <- FaFile(ref)
   txdb <- suppressWarnings(makeTxDbFromGFF(gtf_path, metadata = "gene_id"))
@@ -176,5 +179,55 @@ predict_coding <- function(isomut, ref, gtf_path, format_indels = TRUE) {
   } else {
     isomut <- merge(isomut, coding, by = c("chr", "pos"), all.x = TRUE, all.y = TRUE)
   }
+  isomut <- isomut[!duplicated(isomut),]
+  if(correct_coding) isomut <- correct_coding(isomut)
   return(isomut)
 }
+
+
+#' Correct coding
+correct_coding <- function(isomut) {
+  if(!all(c("gene_id", "nt_start", "AA_start") %in% names(isomut))) {
+    stop("Please annotate and predict coding first!")
+  }
+  ind_coding <- which(!is.na(isomut$gene_id))
+  df_coding <- isomut[ind_coding,] %>%
+    mutate(ind = ind_coding) %>%
+    group_by(sample_name, gene_id, AA_start) %>%
+    filter(n()==2) %>%
+    mutate(codon_pos = ifelse(nt_start %% 3 %in% 1:2, nt_start %% 3, 3)) %>%
+    mutate(var_codon = getVarCodon(codon_pos, mut, ref_codon, var_codon, strand, type),
+        var_AA = case_when(
+          !is.na(var_codon) & type=="SNV" ~ as.character(translate(DNAStringSet(var_codon), no.init.codon = TRUE)),
+          TRUE ~ var_AA
+        ),
+        consequence = as.character(consequence),
+        consequence = case_when(
+          consequence %in% c("synonymous", "nonsynonymous", "nonsense") & var_AA == "*" ~ "nonsense",
+          consequence %in% c("synonymous", "nonsynonymous", "nonsense") & var_AA == ref_AA ~ "synonymous",
+          consequence %in% c("synonymous", "nonsynonymous", "nonsense") & var_AA != ref_AA ~ "nonsynonymous",
+          TRUE ~ consequence
+          )
+        )
+  isomut[df_coding$ind, c("var_codon", "var_AA", "consequence")] <- df_coding[, c("var_codon", "var_AA", "consequence")]
+  return(isomut)
+}
+
+getVarCodon <- function(codon_pos, MUT, REFCODON, VARCODON, strand, type) {
+  codon_pos <- codon_pos[!is.na(codon_pos)]
+  MUT <- MUT[!is.na(codon_pos)]
+  if(length(codon_pos)==0) return(NA)
+  MUT <- ifelse(strand=="+", MUT, reverseComplement(DNAStringSet(MUT)))
+  RC <- strsplit(REFCODON[[1]], "")[[1]]
+  RC[codon_pos] <- MUT
+  return(case_when(
+    type=="SNV" & !is.na(codon_pos) ~ paste(RC, collapse = ""),
+    TRUE ~ VARCODON
+  ))
+}
+
+
+#' Find recurrently mutated genes
+#'
+#'
+# find_recurrent <- function(isomut)
