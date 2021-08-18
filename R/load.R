@@ -26,7 +26,6 @@ read_isomut <- function(file, minReads = 0L, minCoverage = 0, minMutFreq = 0,
   df <- read.table(file, header = TRUE)
   ## rename `sample_name` column
   df$file_name <- df$sample_name
-  df$sample_name <- NULL
   ## remove samples that match certain patterns
   if(!is.null(removePatterns)) {
     for(pattern in removePatterns) {
@@ -51,10 +50,10 @@ read_isomut <- function(file, minReads = 0L, minCoverage = 0, minMutFreq = 0,
   df$cleanliness[df$cleanliness==42] <- NA
   rownames(df) <- NULL
   ## add extra columns
-  if(!is.null(extra_columns)) {
-    stopifnot(is.list(extra_columns), !is.null(names(extra_columns)))
-    for(col_name in names(extra_columns)) {
-      col_value <- extra_columns[[col_name]]
+  if(!is.null(extraColumns)) {
+    stopifnot(is.list(extraColumns), !is.null(names(extraColumns)))
+    for(col_name in names(extraColumns)) {
+      col_value <- extraColumns[[col_name]]
       stopifnot(is.vector(col_value) || is.function(col_value))
       if(is.function(col_value)) {
         df[[col_name]] <- vapply(df$file_name, col_value, character(1))
@@ -84,7 +83,12 @@ read_isomut <- function(file, minReads = 0L, minCoverage = 0, minMutFreq = 0,
 #' an object of class `FaFile`.
 #'
 #' @return A data.frame with formatted sequence information.
-format_indels <- function(isomut, ref) {
+#'
+#' @importFrom Rsamtools FaFile
+#' @importFrom GenomicRanges GRanges
+#' @importFrom IRanges IRanges
+#' @importFrom Biostrings getSeq
+format_indels <- function(isomut, ref = ref_scer) {
   if(with(isomut, all(ref != "-") && all(mut != "-"))) {
     return(isomut)
   }
@@ -119,8 +123,11 @@ format_indels <- function(isomut, ref) {
 #'
 #' @return a data.frame with additional columns regarding annotation.
 #'
+#' @importFrom GenomicFeatures makeTxDbFromGFF
+#' @importFrom rtracklayer import
+#' @importFrom VariantAnnotation locateVariants CodingVariants IntergenicVariants
 #' @export
-annotate_isomut <- function(isomut, gtf_path, noDups = FALSE) {
+annotate_isomut <- function(isomut, gtf_path = txdb_scer, noDups = FALSE) {
   ## load annotation
   txdb <- suppressWarnings(makeTxDbFromGFF(gtf_path, metadata = "gene_id"))
   gtf <- import(gtf_path)
@@ -129,8 +136,12 @@ annotate_isomut <- function(isomut, gtf_path, noDups = FALSE) {
   ## convert isomut to GRanges
   mut_ranges <- GRanges(isomut$chr, IRanges(isomut$pos, width = 1))
   ## locate variants
-  vars_coding <- suppressWarnings(locateVariants(mut_ranges, txdb, CodingVariants()))
-  vars_intergenic <- suppressWarnings(locateVariants(mut_ranges, txdb, IntergenicVariants(upstream = 0 , downstream = 0)))
+  vars_coding <- suppressWarnings(locateVariants(mut_ranges, txdb,
+                                                 CodingVariants()))
+  vars_intergenic <- suppressWarnings(
+    locateVariants(mut_ranges, txdb,
+                   IntergenicVariants(upstream = 0 , downstream = 0))
+    )
   vars <- rbind(as.data.frame(vars_coding), as.data.frame(vars_intergenic))
   ## get rid of additional annotations for the same variant
   if(noDups) {
@@ -158,26 +169,34 @@ annotate_isomut <- function(isomut, gtf_path, noDups = FALSE) {
 #'
 #' @return a data.frame with additional columns regarding coding consequences.
 #'
+#' @importFrom Biostrings DNAStringSet
+#' @importFrom VariantAnnotation predictCoding
+#'
 #' @export
-predict_coding <- function(isomut, ref, gtf_path, format_indels = TRUE,
-                           correct_coding = FALSE) {
+predict_coding <- function(isomut, ref = ref_scer, gtf_path = txdb_scer,
+                           format_indels = TRUE, correct_coding = FALSE) {
   stopifnot(is(ref, "FaFile") || is.character(ref))
   if(is.character(ref)) ref <- FaFile(ref)
   txdb <- suppressWarnings(makeTxDbFromGFF(gtf_path, metadata = "gene_id"))
   ## format indels
   if(format_indels) isomut <- format_indels(isomut, ref)
   ## generate GRanges
-  mut_ranges <- with(isomut, GRanges(chr, ranges = IRanges(start = pos, width = nchar(ref))))
+  mut_ranges <- with(isomut, GRanges(chr, ranges = IRanges(start = pos,
+                                                           width = nchar(ref))))
   varAllele <- DNAStringSet(isomut$mut)
   coding <- suppressWarnings(predictCoding(mut_ranges, txdb, ref, varAllele))
   coding <- as.data.frame(coding)
   coding$AA_start <- vapply(coding$PROTEINLOC, function(l) l[[1]], numeric(1))
-  coding <- coding[, c("seqnames", "start", "GENEID", "CONSEQUENCE", "REFCODON", "VARCODON", "REFAA", "VARAA", "AA_start")]
-  names(coding) <- c("chr", "pos", "gene_id", "consequence", "ref_codon", "var_codon", "ref_AA", "var_AA", "AA_start")
+  coding <- coding[, c("seqnames", "start", "GENEID", "CONSEQUENCE", "REFCODON",
+                       "VARCODON", "REFAA", "VARAA", "AA_start")]
+  names(coding) <- c("chr", "pos", "gene_id", "consequence", "ref_codon",
+                     "var_codon", "ref_AA", "var_AA", "AA_start")
   if("gene_id" %in% names(isomut)) {
-    isomut <- merge(isomut, coding, by = c("chr", "pos", "gene_id"), all.x = TRUE, all.y = FALSE)
+    isomut <- merge(isomut, coding, by = c("chr", "pos", "gene_id"),
+                    all.x = TRUE, all.y = FALSE)
   } else {
-    isomut <- merge(isomut, coding, by = c("chr", "pos"), all.x = TRUE, all.y = TRUE)
+    isomut <- merge(isomut, coding, by = c("chr", "pos"), all.x = TRUE,
+                    all.y = TRUE)
   }
   isomut <- isomut[!duplicated(isomut),]
   if(correct_coding) isomut <- correct_coding(isomut)

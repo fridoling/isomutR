@@ -6,8 +6,8 @@
 \usage{
 predict_coding(
   isomut,
-  ref,
-  gtf_path,
+  ref = ref_scer,
+  gtf_path = txdb_scer,
   format_indels = TRUE,
   correct_coding = FALSE
 )
