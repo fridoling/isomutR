@@ -10,7 +10,10 @@ read_isomut(
   minCoverage = 0,
   minMutFreq = 0,
   removePatterns = NULL,
-  extraColumns = NULL
+  extraColumns = NULL,
+  removeFeatures = TRUE,
+  featureData = SGD_features,
+  removeMito = TRUE
 )
 }
 \arguments{
@@ -33,6 +36,12 @@ the names of the new columns. The list elements can either be a vector of
 length one (each row gets the same value for this column), a named vector
 with names being a subset of the \code{sample_name} column in the original isomut
 file, or a function that accepts those names as arguments.}
+
+\item{removeFeatures}{whether certain genomic features should be removed.}
+
+\item{featureData}{\code{GRanges} that contains features to be removed.}
+
+\item{removeMito}{whether variants in mitochondrial DNA should be removed.}
 }
 \value{
 a data.frame containing the filtered and preprocessed data.
