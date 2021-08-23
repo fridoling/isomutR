@@ -7,7 +7,8 @@
 predict_coding(
   isomut,
   ref = ref_scer,
-  anno = txdb_scer,
+  annotation = gtf_scer,
+  txdb = NULL,
   format_indels = TRUE,
   correct_coding = FALSE
 )
@@ -18,8 +19,10 @@ predict_coding(
 \item{ref}{either the name of a fasta file containing the reference genome or
 an object of class \code{FaFile}.}
 
-\item{anno}{path to annotation file in \code{gtf} or \code{gff} format or \code{GRanges}
+\item{annotation}{path to annotation file in \code{gtf} or \code{gff} format or \code{GRanges}
 object containing the annotations.}
+
+\item{txdb}{optionally provide \code{TxDb} object (should match \code{annotation}).}
 
 \item{format_indels}{whether indels should be formatted (see \code{format_indels}
 for details).}
