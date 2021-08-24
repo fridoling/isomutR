@@ -482,5 +482,6 @@ read_isomut_from_dir <- function(dir, minReads = 0L,
   }
   isomut <- rbindlist(isomut_list, fill = TRUE)
   if(asDataFrame) isomut <- as.data.frame(isomut)
+  message("...done!\n")
   return(isomut)
 }
