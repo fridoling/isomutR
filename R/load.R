@@ -236,6 +236,8 @@ annotate_isomut <- function(isomut, ref = ref_scer, annotation = gtf_scer,
   names(vars) <- c("chr", "pos", "strand", "location", "nt_start", "gene_id")
   isomut <- merge(isomut, data.frame(vars), by = c("chr", "pos"), all.x = TRUE)
   isomut[,gene_name := id2names[gene_id]]
+  isomut[location=="intergenic", `:=`(gene_id = "intergenic", consequence = "intergenic")]
+  isomut[is.na(gene_name), gene_name:=gene_id]
   setorder(isomut, sample_name, chr, pos)
   if(predictCoding) isomut <- predict_coding(isomut, ref = ref_scer,
                                              annotation = annotation, ...)
