@@ -338,7 +338,7 @@ correct_coding <- function(isomut) {
   isomut_coding <- isomut[ind_coding]
   isomut_coding[, ind:=ind_coding]
   isomut_coding[, N:=.N , by=.(sample_name, gene_id, AA_start)]
-  isomut_coding <- isomut_coding[N==2]
+  isomut_coding <- isomut_coding[N %in% 2:3]
   isomut_coding[, codon_pos:=ifelse(nt_start %% 3 %in% 1:2, nt_start %% 3, 3)]
   isomut_coding[, var_codon:=getVarCodon(
     codon_pos, mut, ref_codon, var_codon, strand, type),
