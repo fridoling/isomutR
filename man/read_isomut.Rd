@@ -10,6 +10,7 @@ read_isomut(
   minCoverage = 0,
   minMutFreq = 0,
   minScore = 0,
+  minCleanliness = 0,
   removePatterns = NULL,
   extraColumns = NULL,
   removeFeatures = TRUE,

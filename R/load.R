@@ -147,7 +147,7 @@ remove_features <- function(isomut, featureData = SGD_features) {
 #' @importFrom data.table as.data.table
 #'
 #' @export
-format_indels <- function(isomut, ref = ref_scer) {
+format_indels <- function(isomut, ref = system.file("extdata", "Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa", package = "isomutR")) {
   if(with(isomut, all(ref != "-") && all(mut != "-"))) {
     return(isomut)
   }
@@ -194,7 +194,7 @@ format_indels <- function(isomut, ref = ref_scer) {
 #' @importFrom VariantAnnotation locateVariants CodingVariants IntergenicVariants
 #' @importFrom data.table as.data.table rbindlist
 #' @export
-annotate_isomut <- function(isomut, ref = ref_scer, annotation = gtf_scer,
+annotate_isomut <- function(isomut, ref = system.file("extdata", "Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa", package = "isomutR"), annotation = gtf_scer,
                             txdb = NULL, noDups = FALSE, predictCoding = TRUE,
                             ...) {
   if(nrow(isomut)==0) return(isomut)
@@ -276,9 +276,9 @@ annotate_isomut <- function(isomut, ref = ref_scer, annotation = gtf_scer,
 #' @importFrom dplyr mutate group_by filter n case_when
 #'
 #' @export
-predict_coding <- function(isomut, ref = ref_scer, annotation = gtf_scer,
-                           txdb = NULL, format_indels = TRUE,
-                           correct_coding = FALSE) {
+predict_coding <- function(isomut, ref = system.file("extdata", "Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa", package = "isomutR"),
+                           annotation = gtf_scer, txdb = NULL,
+                           format_indels = TRUE, correct_coding = FALSE) {
   if(nrow(isomut)==0) return(isomut)
   if(!is(isomut, "data.table")) {
     retDF <- TRUE

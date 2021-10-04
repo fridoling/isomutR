@@ -6,7 +6,8 @@
 \usage{
 annotate_isomut(
   isomut,
-  ref = ref_scer,
+  ref = system.file("extdata", "Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa",
+    package = "isomutR"),
   annotation = gtf_scer,
   txdb = NULL,
   noDups = FALSE,
