@@ -35,8 +35,12 @@ read_isomut <- function(file, minReads = 0L, minCoverage = 0, minMutFreq = 0,
                         featureData = SGD_features, removeMito = TRUE,
                         asDataFrame = TRUE) {
   ## read data
-  cmd <- paste("grep -v", removePatterns, file)
-  isomut <- fread(cmd = cmd, header = TRUE, stringsAsFactors = TRUE)
+  if(is.null(removePatterns)) {
+    isomut <- fread(file = file, header = TRUE, stringsAsFactors = TRUE)
+  } else {
+    cmd <- paste("grep -v", removePatterns, file)
+    isomut <- fread(cmd = cmd, header = TRUE, stringsAsFactors = TRUE)
+  }
   ## rename `sample_name` column
   isomut[, file_name := sample_name]
   # ## remove samples that match certain patterns
@@ -234,9 +238,11 @@ annotate_isomut <- function(isomut, ref = ref_scer, annotation = gtf_scer,
   }
   vars <- vars[, c("seqnames", "start", "strand", "LOCATION", "LOCSTART", "GENEID")]
   names(vars) <- c("chr", "pos", "strand", "location", "nt_start", "gene_id")
+  cols <- c("chr", "pos", setdiff(names(isomut), names(vars)))
+  isomut <- isomut[, cols, with = FALSE]
   isomut <- merge(isomut, data.frame(vars), by = c("chr", "pos"), all.x = TRUE)
   isomut[,gene_name := id2names[gene_id]]
-  isomut[location=="intergenic", `:=`(gene_id = "intergenic", consequence = "intergenic")]
+  isomut[location=="intergenic", `:=`(gene_id = "intergenic")]
   isomut[is.na(gene_name), gene_name:=gene_id]
   setorder(isomut, sample_name, chr, pos)
   if(predictCoding) isomut <- predict_coding(isomut, ref = ref_scer,
@@ -328,7 +334,7 @@ correct_coding <- function(isomut) {
   if(!all(c("gene_id", "nt_start", "AA_start") %in% names(isomut))) {
     stop("Please annotate data first!")
   }
-  ind_coding <- which(!is.na(isomut$gene_id) && type=="SNV")
+  ind_coding <- which(!is.na(isomut$gene_id) & isomut$type=="SNV")
   isomut_coding <- isomut[ind_coding]
   isomut_coding[, ind:=ind_coding]
   isomut_coding[, N:=.N , by=.(sample_name, gene_id, AA_start)]
@@ -337,8 +343,12 @@ correct_coding <- function(isomut) {
   isomut_coding[, var_codon:=getVarCodon(
     codon_pos, mut, ref_codon, var_codon, strand, type),
     by = .(sample_name, gene_id, AA_start)]
-  isomut_coding[, `:=`(var_AA = case_when(!is.na(var_codon) ~ as.character(
-    translate(DNAStringSet(var_codon), no.init.codon = TRUE)),
+  isomut_coding[, `:=`(
+    var_AA = case_when(
+      !is.na(var_codon) && nt_start>3 ~
+        as.character(translate(DNAStringSet(var_codon), no.init.codon = TRUE)),
+      !is.na(var_codon) ~
+        as.character(translate(DNAStringSet(var_codon), no.init.codon = FALSE)),
     TRUE ~ var_AA),
     consequence = case_when(
       var_AA == "*" ~ "nonsense",
