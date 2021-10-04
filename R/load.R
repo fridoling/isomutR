@@ -30,7 +30,7 @@
 #' @importFrom data.table fread setnames setorder
 #' @export
 read_isomut <- function(file, minReads = 0L, minCoverage = 0, minMutFreq = 0,
-                        minScore = 0, removePatterns = NULL,
+                        minScore = 0, minCleanliness = 0, removePatterns = NULL,
                         extraColumns = NULL, removeFeatures = TRUE,
                         featureData = SGD_features, removeMito = TRUE,
                         asDataFrame = TRUE) {
@@ -75,7 +75,9 @@ read_isomut <- function(file, minReads = 0L, minCoverage = 0, minMutFreq = 0,
   }
   ## replace cleanliness 42 with NA
   isomut[cleanliness==42, cleanliness := NA]
-
+  if(minCleanliness > 0) {
+    isomut <- isomut[cleanliness > minCleanliness]
+  }
   ## add extra columns
   if(!is.null(extraColumns)) {
     stopifnot(is.list(extraColumns), !is.null(names(extraColumns)))
@@ -245,7 +247,7 @@ annotate_isomut <- function(isomut, ref = ref_scer, annotation = gtf_scer,
   isomut[location=="intergenic", `:=`(gene_id = "intergenic")]
   isomut[is.na(gene_name), gene_name:=gene_id]
   setorder(isomut, sample_name, chr, pos)
-  if(predictCoding) isomut <- predict_coding(isomut, ref = ref_scer,
+  if(predictCoding) isomut <- predict_coding(isomut, ref = ref,
                                              annotation = annotation, ...)
   if(retDF) isomut <- as.data.frame(isomut)
   return(isomut)
