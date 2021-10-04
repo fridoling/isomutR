@@ -98,7 +98,7 @@ read_isomut <- function(file, minReads = 0L, minCoverage = 0, minMutFreq = 0,
   }
   ## order and remove possible duplicates
   isomut <- unique(isomut)
-  setorder(isomut, sample_name, chr, pos)
+  setorder(isomut, file_name, chr, pos)
   if(asDataFrame) isomut <- as.data.frame(isomut)
   return(isomut)
 }
@@ -224,7 +224,7 @@ annotate_isomut <- function(isomut, ref = system.file("extdata", "Saccharomyces_
   gr_genes <- gr[gr$type == "gene"]
   id2names <- setNames(gr_genes$gene_name, gr_genes$gene_id)
   ## convert isomut to GRanges
-  mut_ranges <- GRanges(isomut$chr, IRanges(isomut$pos, width = 1), sample_name = isomut$sample_name)
+  mut_ranges <- GRanges(isomut$chr, IRanges(isomut$pos, width = 1), file_name = isomut$file_name)
   ## locate variants
   vars_coding <- suppressMessages(suppressWarnings(
     locateVariants(mut_ranges, txdb, CodingVariants())
@@ -246,7 +246,7 @@ annotate_isomut <- function(isomut, ref = system.file("extdata", "Saccharomyces_
   isomut[,gene_name := id2names[gene_id]]
   isomut[location=="intergenic", `:=`(gene_id = "intergenic")]
   isomut[is.na(gene_name), gene_name:=gene_id]
-  setorder(isomut, sample_name, chr, pos)
+  setorder(isomut, file_name, chr, pos)
   if(predictCoding) isomut <- predict_coding(isomut, ref = ref,
                                              annotation = annotation, ...)
   if(retDF) isomut <- as.data.frame(isomut)
@@ -339,12 +339,12 @@ correct_coding <- function(isomut) {
   ind_coding <- which(!is.na(isomut$gene_id) & isomut$type=="SNV")
   isomut_coding <- isomut[ind_coding]
   isomut_coding[, ind:=ind_coding]
-  isomut_coding[, N:=.N , by=.(sample_name, gene_id, AA_start)]
+  isomut_coding[, N:=.N , by=.(file_name, gene_id, AA_start)]
   isomut_coding <- isomut_coding[N %in% 2:3]
   isomut_coding[, codon_pos:=ifelse(nt_start %% 3 %in% 1:2, nt_start %% 3, 3)]
   isomut_coding[, var_codon:=getVarCodon(
     codon_pos, mut, ref_codon, var_codon, strand, type),
-    by = .(sample_name, gene_id, AA_start)]
+    by = .(file_name, gene_id, AA_start)]
   isomut_coding[, `:=`(
     var_AA = case_when(
       !is.na(var_codon) && nt_start>3 ~
@@ -366,7 +366,7 @@ getVarCodon <- function(codon_pos, MUT, REFCODON, VARCODON, strand, type) {
   codon_pos <- codon_pos[!is.na(codon_pos)]
   MUT <- MUT[!is.na(codon_pos)]
   if(length(codon_pos)==0) return(NA)
-  MUT <- ifelse(strand=="+", MUT, reverseComplement(DNAStringSet(MUT)))
+  MUT <- ifelse(strand=="+", as.character(MUT), reverseComplement(DNAStringSet(MUT)))
   RC <- strsplit(REFCODON[[1]], "")[[1]]
   RC[codon_pos] <- MUT
   return(case_when(
@@ -471,10 +471,10 @@ read_isomut_from_dir <- function(dir, minReads = 0L,
     } else {
       if(!"txdb" %in% names(args) || is.null(args[["txdb"]])) {
         suppressMessages(
-          args[["txdb"]] <- suppressWarnings(makeTxDbFromGFF(gtf_scer))
+          args[["txdb"]] <- suppressWarnings(makeTxDbFromGRanges(gtf_scer))
         )
       }
-      args[["annotation"]] <- import(gtf_scer)
+      args[["annotation"]] <- gtf_scer
     }
     if(verbose) {
       message("\nAnnotating...")
