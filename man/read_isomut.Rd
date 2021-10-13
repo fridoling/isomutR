@@ -34,6 +34,9 @@ read_isomut(
 \item{minScore}{double indicating the minimum isomut score
 (default = 0).}
 
+\item{minCleanliness}{double indicating the minimum isomut cleanliness
+(default = 0).}
+
 \item{removePatterns}{character vector providing patterns in
 sample_names that are to be removed.}
 

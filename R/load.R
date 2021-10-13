@@ -12,6 +12,8 @@
 #' (default = 0).
 #' @param minScore double indicating the minimum isomut score
 #' (default = 0).
+#' @param minCleanliness double indicating the minimum isomut cleanliness
+#' (default = 0).
 #' @param removePatterns character vector providing patterns in
 #' sample_names that are to be removed.
 #' @param extraColumns named list to generate extra columns. The list names are
@@ -431,6 +433,8 @@ getVarCodon <- function(codon_pos, MUT, REFCODON, VARCODON, strand, type) {
 #' (default = 0).
 #' @param minScore double indicating the minimum isomut score
 #' (default = 0).
+#' @param minCleanliness double indicating the minimum isomut cleanliness
+#' (default = 0).
 #' @param removePatterns character vector providing patterns in
 #' sample_names that are to be removed.
 #' @param extraColumns named list to generate extra columns. The list names are
@@ -457,8 +461,8 @@ getVarCodon <- function(codon_pos, MUT, REFCODON, VARCODON, strand, type) {
 #' @export
 read_isomut_from_dir <- function(dir, minReads = 0L,
                                  minCoverage = 0, minMutFreq = 0, minScore = 0,
-                                 removePatterns = NULL, extraColumns = NULL,
-                                 removeFeatures = TRUE,
+                                 minCleanliness = 0, removePatterns = NULL,
+                                 extraColumns = NULL, removeFeatures = TRUE,
                                  featureData = SGD_features, removeMito = TRUE,
                                  verbose = TRUE,
                                  asDataFrame = TRUE,
@@ -479,6 +483,7 @@ read_isomut_from_dir <- function(dir, minReads = 0L,
                                       minCoverage = minCoverage,
                                       minMutFreq = minMutFreq,
                                       minScore = minScore,
+                                      minCleanliness = minCleanliness,
                                       removePatterns = removePatterns,
                                       extraColumns = extraColumns,
                                       removeFeatures = removeFeatures,

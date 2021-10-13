@@ -10,6 +10,7 @@ read_isomut_from_dir(
   minCoverage = 0,
   minMutFreq = 0,
   minScore = 0,
+  minCleanliness = 0,
   removePatterns = NULL,
   extraColumns = NULL,
   removeFeatures = TRUE,
@@ -34,6 +35,9 @@ read_isomut_from_dir(
 (default = 0).}
 
 \item{minScore}{double indicating the minimum isomut score
+(default = 0).}
+
+\item{minCleanliness}{double indicating the minimum isomut cleanliness
 (default = 0).}
 
 \item{removePatterns}{character vector providing patterns in
