@@ -224,26 +224,34 @@ annotate_isomut <- function(isomut, ref = system.file("extdata", "Saccharomyces_
   gr_genes <- gr[gr$type == "gene"]
   id2names <- setNames(gr_genes$gene_name, gr_genes$gene_id)
   ## convert isomut to GRanges
-  mut_ranges <- GRanges(isomut$chr, IRanges(isomut$pos, width = 1), file_name = isomut$file_name)
-  ## locate variants
-  vars_coding <- suppressMessages(suppressWarnings(
-    locateVariants(mut_ranges, txdb, CodingVariants())
-    ))
-  vars_intergenic <- suppressMessages(suppressWarnings(
-    locateVariants(mut_ranges, txdb,
-                   IntergenicVariants(upstream = 0 , downstream = 0))
-    ))
-  vars <- rbind(as.data.table(vars_coding), as.data.table(vars_intergenic))
-  ## get rid of additional annotations for the same variant
-  if(noDups) {
-    vars <- vars[!duplicated(QUERYID)]
-  }
-  vars <- vars[, c("seqnames", "start", "strand", "LOCATION", "LOCSTART", "GENEID")]
-  names(vars) <- c("chr", "pos", "strand", "location", "nt_start", "gene_id")
-  cols <- c("chr", "pos", setdiff(names(isomut), names(vars)))
-  isomut <- isomut[, cols, with = FALSE]
-  isomut <- merge(isomut, data.frame(vars), by = c("chr", "pos"), all.x = TRUE)
-  isomut[,gene_name := id2names[gene_id]]
+  isomut_list <- split(isomut, isomut$file_name)
+  variants <- lapply(isomut_list, function(isomut_i) {
+    mut_ranges_i <- GRanges(isomut_i$chr, IRanges(isomut_i$pos, width = 1))
+    mut_ranges_i <- unique(mut_ranges_i)
+    ## locate variants
+    variants_coding_i <- suppressMessages(suppressWarnings(
+      locateVariants(mut_ranges_i, txdb, CodingVariants())
+      ))
+    variants_intergenic_i <- suppressMessages(suppressWarnings(
+      locateVariants(mut_ranges_i, txdb,
+                     IntergenicVariants(upstream = 0 , downstream = 0))
+      ))
+    variants_i <- rbind(as.data.table(variants_coding_i), as.data.table(variants_intergenic_i))
+    ## get rid of additional annotations for the same variant
+    if(noDups) {
+      variants_i <- variants_i[!duplicated(QUERYID)]
+    }
+    return(variants_i)
+  })
+  ## merge variants with isomut data
+  variants <- rbindlist(variants, idcol = "file_name")
+  variants <- variants[, c("seqnames", "start", "strand", "LOCATION", "LOCSTART", "GENEID", "file_name")]
+  names(variants) <- c("chr", "pos", "strand", "location", "nt_start", "gene_id", "file_name")
+  variants[, gene_name := id2names[gene_id]]
+  ## get rid of previous annotation if present
+  cols <- c("chr", "pos", "file_name", setdiff(names(isomut), names(variants)))
+  isomut <- unique(isomut[, cols, with = FALSE])
+  isomut <- merge(isomut, as.data.table(variants), by = c("chr", "pos", "file_name"), all.x = TRUE)
   isomut[location=="intergenic", `:=`(gene_id = "intergenic")]
   isomut[is.na(gene_name), gene_name:=gene_id]
   setorder(isomut, file_name, chr, pos)
@@ -267,6 +275,7 @@ annotate_isomut <- function(isomut, ref = system.file("extdata", "Saccharomyces_
 #' for details).
 #' @param correct_coding whether coding be corrected if two variants hit the same
 #' codon.
+#' @param ... further arguments for `correct_coding`.
 #'
 #' @return a data.frame with additional columns regarding coding consequences.
 #'
@@ -278,7 +287,11 @@ annotate_isomut <- function(isomut, ref = system.file("extdata", "Saccharomyces_
 #' @export
 predict_coding <- function(isomut, ref = system.file("extdata", "Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa", package = "isomutR"),
                            annotation = gtf_scer, txdb = NULL,
-                           format_indels = TRUE, correct_coding = FALSE) {
+                           format_indels = TRUE, correct_coding = FALSE, ...) {
+  if(!"gene_id" %in% names(isomut)) {
+    stop("Please annotate data first!")
+  }
+  isomut_cols <- names(isomut)
   if(nrow(isomut)==0) return(isomut)
   if(!is(isomut, "data.table")) {
     retDF <- TRUE
@@ -312,30 +325,56 @@ predict_coding <- function(isomut, ref = system.file("extdata", "Saccharomyces_c
   if(length(coding) > 0) {
     coding <- as.data.table(coding)
     coding$AA_start <- vapply(coding$PROTEINLOC, function(l) l[[1]], numeric(1))
-    coding <- coding[, c("seqnames", "start", "GENEID", "CONSEQUENCE", "REFCODON",
+    coding$mut <- ifelse(coding$strand=="+", coding$varAllele, reverseComplement(DNAStringSet(coding$varAllele)))
+    coding <- coding[, c("seqnames", "start", "mut", "GENEID", "CONSEQUENCE", "REFCODON",
                          "VARCODON", "REFAA", "VARAA", "AA_start")]
-    names(coding) <- c("chr", "pos", "gene_id", "consequence", "ref_codon",
+    names(coding) <- c("chr", "pos", "mut", "gene_id", "consequence", "ref_codon",
                        "var_codon", "ref_AA", "var_AA", "AA_start")
-    if("gene_id" %in% names(isomut)) {
-      isomut <- merge(isomut, coding, by = c("chr", "pos", "gene_id"),
+    coding <- unique(coding)
+    ## get rid of previous coding if present
+    cols <- c("chr", "pos", "gene_id", "mut", setdiff(names(isomut), names(coding)))
+    isomut <- unique(isomut[, cols, with = FALSE])
+    isomut <- merge(isomut, coding, by = c("chr", "pos", "mut", "gene_id"),
                       all.x = TRUE, all.y = FALSE)
-    } else {
-      isomut <- merge(isomut, coding, by = c("chr", "pos"), all.x = TRUE,
-                      all.y = TRUE)
-    }
     isomut <- unique(isomut)
-    if(correct_coding) isomut <- correct_coding(isomut)
+    if(correct_coding) isomut <- correct_coding(isomut, ...)
   }
+  ## rearrange columns
+  isomut <- isomut[,c(isomut_cols, setdiff(names(isomut), isomut_cols)), with = FALSE]
+  ## adjust return format
   if(retDF) isomut <- as.data.frame(isomut)
   return(isomut)
 }
 
 
 #' Correct coding
-correct_coding <- function(isomut) {
+#'
+#' corrects the predicted AA if multiple variants are found in the same codon
+#'
+#' @param isomut a data.frame of isomut data as generated by `read_isomut` and
+#' annotated by `annotate_isomut`.
+#' @param keep_uncorrected boolean. Adds a column for the uncorrected coding.
+#' @param highlight boolean. Adds a column that indicates which variants have
+#' corrected condons.
+#' @return a data.frame of the same format with corrected coding.
+#'
+#' @importFrom Biostrings DNAStringSet translate reverseComplement
+#' @importFrom VariantAnnotation predictCoding
+#' @importFrom dplyr case_when
+#'
+#' @export
+correct_coding <- function(isomut, keep_uncorrected = FALSE, highlight = FALSE) {
   if(!all(c("gene_id", "nt_start", "AA_start") %in% names(isomut))) {
     stop("Please annotate data first!")
   }
+  if(!is(isomut, "data.table")) {
+    retDF <- TRUE
+    isomut <- as.data.table(isomut)
+  } else {
+    retDF <- FALSE
+  }
+  isomut[,var_AA_uncorrected:=var_AA]
+  isomut[,var_codon_uncorrected:=var_codon]
   ind_coding <- which(!is.na(isomut$gene_id) & isomut$type=="SNV")
   isomut_coding <- isomut[ind_coding]
   isomut_coding[, ind:=ind_coding]
@@ -359,6 +398,12 @@ correct_coding <- function(isomut) {
       TRUE ~ as.character(consequence))
     )]
   isomut[isomut_coding$ind, c("var_codon", "var_AA", "consequence")] <- isomut_coding[, c("var_codon", "var_AA", "consequence")]
+  if(highlight) isomut[,corrected_codon:= var_AA!=var_AA_uncorrected]
+  if(!keep_uncorrected) {
+    isomut[,var_AA_uncorrected:=NULL]
+    isomut[,var_codon_uncorrected:=NULL]
+  }
+  if(retDF) isomut <- as.data.frame(isomut)
   return(isomut)
 }
 

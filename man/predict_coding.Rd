@@ -11,7 +11,8 @@ predict_coding(
   annotation = gtf_scer,
   txdb = NULL,
   format_indels = TRUE,
-  correct_coding = FALSE
+  correct_coding = FALSE,
+  ...
 )
 }
 \arguments{
@@ -30,6 +31,8 @@ for details).}
 
 \item{correct_coding}{whether coding be corrected if two variants hit the same
 codon.}
+
+\item{...}{further arguments for \code{correct_coding}.}
 }
 \value{
 a data.frame with additional columns regarding coding consequences.
