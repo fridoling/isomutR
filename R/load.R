@@ -377,6 +377,7 @@ correct_coding <- function(isomut, keep_uncorrected = FALSE, highlight = FALSE) 
   }
   isomut[,var_AA_uncorrected:=var_AA]
   isomut[,var_codon_uncorrected:=var_codon]
+  isomut[,consequence_uncorrected:=consequence]
   ind_coding <- which(!is.na(isomut$gene_id) & isomut$type=="SNV")
   isomut_coding <- isomut[ind_coding]
   isomut_coding[, ind:=ind_coding]
@@ -392,18 +393,19 @@ correct_coding <- function(isomut, keep_uncorrected = FALSE, highlight = FALSE) 
         as.character(translate(DNAStringSet(var_codon), no.init.codon = TRUE)),
       !is.na(var_codon) ~
         as.character(translate(DNAStringSet(var_codon), no.init.codon = FALSE)),
-    TRUE ~ var_AA),
+    TRUE ~ var_AA))]
+  isomut_coding[, `:=`(
     consequence = case_when(
       var_AA == "*" ~ "nonsense",
       var_AA == ref_AA ~ "synonymous",
       var_AA != ref_AA ~ "nonsynonymous",
-      TRUE ~ as.character(consequence))
-    )]
+      TRUE ~ as.character(consequence)))]
   isomut[isomut_coding$ind, c("var_codon", "var_AA", "consequence")] <- isomut_coding[, c("var_codon", "var_AA", "consequence")]
   if(highlight) isomut[,corrected_codon:= var_AA!=var_AA_uncorrected]
   if(!keep_uncorrected) {
     isomut[,var_AA_uncorrected:=NULL]
     isomut[,var_codon_uncorrected:=NULL]
+    isomut[,consequence_uncorrected:=NULL]
   }
   if(retDF) isomut <- as.data.frame(isomut)
   return(isomut)
