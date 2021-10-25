@@ -108,8 +108,8 @@ plot_variants <- function(isomut, genes, annotation = gtf_scer, ymax = NULL,
     }
     return(p)
   })
-  p <- wrap_elements(textGrob('Number of variants', rot = 90)) + wrap_plots(pl, ncol = 1)
+  p <- wrap_elements(textGrob('number of variants', rot = 90)) + wrap_plots(pl, ncol = 1)
   p <- p + plot_layout(widths = c(1,20), guides = "collect") & theme(legend.position = 'right')
   if(!is.null(filename)) ggsave(filename, p, ...)
-  print(p)
+  return(p)
 }
