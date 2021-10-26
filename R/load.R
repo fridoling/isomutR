@@ -40,11 +40,13 @@ read_isomut <- function(file, minReads = 0L, minCoverage = 0, minMutFreq = 0,
   if(is.null(removePatterns)) {
     isomut <- fread(file = file, header = TRUE, stringsAsFactors = TRUE)
   } else {
-    cmd <- paste("grep -v", removePatterns, file)
+    cmd <- paste("egrep -v", ' "', paste(removePatterns, collapse = "|"), '" ', file, sep = "")
     isomut <- fread(cmd = cmd, header = TRUE, stringsAsFactors = TRUE)
   }
   ## rename `sample_name` column
-  isomut[, file_name := sample_name]
+  names(isomut)[1] = "file_name"
+  ## rename `cov` to `coverage` if necessary
+  names(isomut)[names(isomut) == "cov"] <- "coverage"
   # ## remove samples that match certain patterns
   # if(!is.null(removePatterns)) {
   #   for(pattern in removePatterns) {
@@ -400,6 +402,8 @@ correct_coding <- function(isomut, keep_uncorrected = FALSE, highlight = FALSE) 
       var_AA == ref_AA ~ "synonymous",
       var_AA != ref_AA ~ "nonsynonymous",
       TRUE ~ as.character(consequence)))]
+
+
   isomut[isomut_coding$ind, c("var_codon", "var_AA", "consequence")] <- isomut_coding[, c("var_codon", "var_AA", "consequence")]
   if(highlight) isomut[,corrected_codon:= var_AA!=var_AA_uncorrected]
   if(!keep_uncorrected) {
