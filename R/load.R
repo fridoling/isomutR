@@ -63,24 +63,24 @@ read_isomut <- function(file, minReads = 0L, minCoverage = 0, minMutFreq = 0,
   isomut[,read := round(coverage * mut_freq)]
   ## remove rows with too few reads
   if(minReads > 0) {
-    isomut <- isomut[read > minReads]
+    isomut <- isomut[read >= minReads]
   }
   ## remove rows with low coverage
   if(minCoverage > 0) {
-    isomut <- isomut[coverage > minCoverage]
+    isomut <- isomut[coverage >= minCoverage]
   }
   ## remove rows with low mutation frequency
   if(minMutFreq > 0) {
-    isomut <- isomut[mut_freq > minMutFreq]
+    isomut <- isomut[mut_freq >= minMutFreq]
   }
   ## remove rows with low isomut score
   if(minMutFreq > 0) {
-    isomut <- isomut[score > minScore]
+    isomut <- isomut[score >= minScore]
   }
   ## replace cleanliness 42 with NA
   isomut[cleanliness==42, cleanliness := NA]
   if(minCleanliness > 0) {
-    isomut <- isomut[cleanliness > minCleanliness]
+    isomut <- isomut[cleanliness >= minCleanliness]
   }
   ## add extra columns
   if(!is.null(extraColumns)) {
