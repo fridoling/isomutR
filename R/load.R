@@ -94,7 +94,7 @@ read_isomut <- function(file, minReads = 0L, minCoverage = 0, minMutFreq = 0,
         if(length(col_value) == 1) {
           isomut[,(col_name) := factor(col_value)]
         } else {
-          stopifnot(df$file_name %in% names(col_value))
+          stopifnot(isomut$file_name %in% names(col_value))
           isomut[,(col_name) := factor(col_value[isomut$file_name])]
         }
       }
