@@ -95,7 +95,7 @@ read_isomut <- function(file, minReads = 0L, minCoverage = 0, minMutFreq = 0,
           isomut[,(col_name) := factor(col_value)]
         } else {
           stopifnot(isomut$file_name %in% names(col_value))
-          isomut[,(col_name) := factor(col_value[isomut$file_name])]
+          isomut[,(col_name) := factor(col_value[as.character(isomut$file_name)])]
         }
       }
     }
