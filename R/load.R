@@ -74,7 +74,7 @@ read_isomut <- function(file, minReads = 0L, minCoverage = 0, minMutFreq = 0,
     isomut <- isomut[mut_freq >= minMutFreq]
   }
   ## remove rows with low isomut score
-  if(minMutFreq > 0) {
+  if(minScore > 0) {
     isomut <- isomut[score >= minScore]
   }
   ## replace cleanliness 42 with NA
